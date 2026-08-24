@@ -1,5 +1,6 @@
 package org.quiltmc.enigma.api.analysis.index.jar;
 
+import org.jspecify.annotations.Nullable;
 import org.quiltmc.enigma.api.analysis.ReferenceTargetType;
 import org.quiltmc.enigma.api.translation.representation.Lambda;
 import org.quiltmc.enigma.api.translation.representation.entry.ClassDefEntry;
@@ -34,6 +35,9 @@ public interface JarIndexer {
 	default void indexEnclosingMethod(ClassDefEntry classEntry, EnclosingMethodData enclosingMethodData) {
 	}
 
+	default void indexInnerClass(ClassDefEntry classEntry, InnerClassData innerClassData) {
+	}
+
 	default void processIndex(JarIndex index) {
 	}
 
@@ -49,6 +53,10 @@ public interface JarIndexer {
 	 */
 	default Class<? extends JarIndexer> getType() {
 		return this.getClass();
+	}
+
+	// https://docs.oracle.com/javase/specs/jvms/se7/html/jvms-4.html#jvms-4.7.6
+	record InnerClassData(String name, @Nullable String outerName, @Nullable String innerName, int access) {
 	}
 
 	record EnclosingMethodData(String owner, String name, String descriptor) {

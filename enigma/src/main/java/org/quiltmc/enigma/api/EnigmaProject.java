@@ -8,6 +8,7 @@ import org.objectweb.asm.tree.ClassNode;
 import org.quiltmc.enigma.api.analysis.EntryReference;
 import org.quiltmc.enigma.api.analysis.index.jar.EnclosingMethodIndex;
 import org.quiltmc.enigma.api.analysis.index.jar.EntryIndex;
+import org.quiltmc.enigma.api.analysis.index.jar.InnerClassIndex;
 import org.quiltmc.enigma.api.analysis.index.jar.JarIndex;
 import org.quiltmc.enigma.api.analysis.index.mapping.MappingsIndex;
 import org.quiltmc.enigma.api.service.ObfuscationTestService;
@@ -33,6 +34,7 @@ import org.quiltmc.enigma.api.translation.representation.entry.Entry;
 import org.quiltmc.enigma.api.translation.representation.entry.LocalVariableEntry;
 import org.quiltmc.enigma.api.translation.representation.entry.MethodEntry;
 import org.quiltmc.enigma.impl.translation.mapping.MappingsChecker;
+import org.quiltmc.enigma.util.AsmUtil;
 import org.quiltmc.enigma.util.I18n;
 import org.tinylog.Logger;
 
@@ -306,6 +308,14 @@ public class EnigmaProject {
 		return enclosingMethodIndex.hasEnclosingMethod(classEntry);
 	}
 
+	public boolean isNestedInSource(ClassEntry classEntry) {
+		return this.jarIndex.getIndex(InnerClassIndex.class).isNestedInSource(classEntry);
+	}
+
+	public ClassEntry getSourceRoot(ClassEntry classEntry) {
+		return this.jarIndex.getIndex(InnerClassIndex.class).getSourceRoot(classEntry);
+	}
+
 	/**
 	 * Verifies that the provided {@code parameter} has a valid index for its parent method.
 	 * This method validates both the upper and lower bounds of the parent method's index range.
@@ -413,7 +423,7 @@ public class EnigmaProject {
 
 		public Stream<ClassSource> decompileStream(ProgressListener progress, DecompilerService decompilerService, DecompileErrorStrategy errorStrategy) {
 			Collection<ClassNode> classes = this.compiled.values().stream()
-					.filter(classNode -> classNode.name.indexOf('$') == -1)
+					.filter(classNode -> !AsmUtil.isNestedInSource(classNode))
 					.toList();
 
 			progress.init(classes.size(), I18n.translate("progress.classes.decompiling"));

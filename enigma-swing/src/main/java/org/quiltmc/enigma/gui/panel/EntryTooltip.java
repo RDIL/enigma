@@ -319,7 +319,7 @@ public class EntryTooltip extends JWindow {
 
 		{
 			final ClassHandle targetTopClassHandle = this.gui.getController().getClassHandleProvider()
-					.openClass(target.getTopLevelClass());
+					.openClass(this.gui.getController().getSourceRoot(target));
 
 			if (targetTopClassHandle != null) {
 				this.declarationSnippet = new DeclarationSnippetPanel(this.gui, target, targetTopClassHandle);

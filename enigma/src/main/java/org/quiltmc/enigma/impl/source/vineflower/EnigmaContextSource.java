@@ -29,6 +29,11 @@ public class EnigmaContextSource implements IContextSource {
 		return this.external;
 	}
 
+	/** The internal name of the class this source was created for. */
+	public String getClassName() {
+		return this.name;
+	}
+
 	@Override
 	public String getName() {
 		return "class " + this.name;
@@ -40,14 +45,30 @@ public class EnigmaContextSource implements IContextSource {
 		}
 
 		this.classNames = new ArrayList<>();
-		String root = this.name.contains("$") ? this.name.substring(0, this.name.indexOf("$")) : this.name;
+		String root = this.sourceRoot(this.name);
 		this.classNames.add(root);
 
 		Map<String, Object> options = VineflowerPreferences.getEffectiveOptions();
 		if (!options.containsKey(IFernflowerPreferences.DECOMPILE_INNER)
 				|| "1".equals(options.get(IFernflowerPreferences.DECOMPILE_INNER))) {
-			this.classNames.addAll(this.classProvider.getClasses(root).stream().filter(s -> s.contains("$")).toList());
+			this.classNames.addAll(this.classProvider.getClasses(root).stream()
+					.filter(s -> !s.equals(root) && this.isNestedInSource(s))
+					.toList());
 		}
+	}
+
+	private String sourceRoot(String className) {
+		String root = className;
+		while (root.lastIndexOf('$') > 0 && this.isNestedInSource(root)) {
+			root = root.substring(0, root.lastIndexOf('$'));
+		}
+
+		return root;
+	}
+
+	private boolean isNestedInSource(String className) {
+		ClassNode node = this.classProvider.get(className);
+		return node != null && AsmUtil.isNestedInSource(node);
 	}
 
 	@Override

@@ -367,7 +367,8 @@ public class Gui {
 	 * @param reference the reference
 	 */
 	public void showReference(EntryReference<Entry<?>, Entry<?>> reference) {
-		this.editorTabbedPane.openClass(reference.getLocationClassEntry().getOutermostClass()).showReference(reference);
+		ClassEntry sourceRoot = this.controller.getProject().getSourceRoot(reference.getLocationClassEntry());
+		this.editorTabbedPane.openClass(sourceRoot).showReference(reference);
 	}
 
 	public void setObfClasses(Collection<ClassEntry> obfClasses) {
