@@ -45,7 +45,7 @@ public class EnigmaContextSource implements IContextSource {
 		}
 
 		this.classNames = new ArrayList<>();
-		String root = this.sourceRoot(this.name);
+		String root = this.getSourceRoot(this.name);
 		this.classNames.add(root);
 
 		Map<String, Object> options = VineflowerPreferences.getEffectiveOptions();
@@ -57,10 +57,13 @@ public class EnigmaContextSource implements IContextSource {
 		}
 	}
 
-	private String sourceRoot(String className) {
+	private String getSourceRoot(String className) {
 		String root = className;
-		while (root.lastIndexOf('$') > 0 && this.isNestedInSource(root)) {
-			root = root.substring(0, root.lastIndexOf('$'));
+		int separator = root.lastIndexOf('$');
+
+		while (separator > 0 && this.isNestedInSource(root)) {
+			root = root.substring(0, separator);
+			separator = root.lastIndexOf('$');
 		}
 
 		return root;

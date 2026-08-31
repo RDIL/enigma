@@ -94,14 +94,12 @@ public class VineflowerSource implements Source {
 
 		decompiler.decompileContext();
 
-		EnigmaTextTokenCollector tokenCollector = null;
+		EnigmaTextTokenCollector tokenCollector;
 		synchronized (tokenCollectors) {
-			for (EnigmaTextTokenCollector collector : tokenCollectors) {
-				if (collector.hasTokensFor(this.className)) {
-					tokenCollector = collector;
-					break;
-				}
-			}
+			tokenCollector = tokenCollectors.stream()
+					.filter(collector -> collector.hasTokensFor(this.className))
+					.findFirst()
+					.orElse(null);
 		}
 
 		if (tokenCollector == null) {

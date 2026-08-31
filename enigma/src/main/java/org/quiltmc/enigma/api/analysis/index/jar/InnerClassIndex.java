@@ -28,9 +28,9 @@ public class InnerClassIndex implements JarIndexer {
 	}
 
 	/**
-	 * Returns whether {@code entry}'s source is written inside another class' source, i.e. whether the jar
+	 * Returns whether the passed {@code entry}'s source is written inside another class' source, i.e. whether the jar
 	 * declares it nested with an {@code InnerClasses} record. A class whose name looks nested but that has no
-	 * such record decompiles to a file of its own, and this returns {@code false} for it.
+	 * such record yields {@code false}.
 	 *
 	 * @param entry the class to check
 	 */
@@ -39,7 +39,7 @@ public class InnerClassIndex implements JarIndexer {
 	}
 
 	/**
-	 * Returns the class whose source contains {@code entry}'s, which is {@code entry} itself unless it is
+	 * Returns the class whose source contains the passed {@code entry}'s, which is {@code entry} itself unless it is
 	 * {@linkplain #isNestedInSource nested in source}. This is the class to decompile, to open in an editor
 	 * and to index tokens against when navigating to {@code entry}.
 	 *
