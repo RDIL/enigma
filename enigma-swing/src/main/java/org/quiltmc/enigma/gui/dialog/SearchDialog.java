@@ -229,7 +229,7 @@ public class SearchDialog {
 
 			switch (searchedType) {
 				case CLASS -> entryIndex.getClasses().parallelStream()
-						.filter(e -> !e.isInnerClass())
+						.filter(e -> !this.gui.getController().getProject().isNestedInSource(e))
 						.map(e -> SearchEntryImpl.from(e, this.gui.getController()))
 						.map(SearchUtil.Entry::from)
 						.sequential()

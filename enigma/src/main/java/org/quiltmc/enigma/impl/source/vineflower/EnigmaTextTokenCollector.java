@@ -57,10 +57,18 @@ public class EnigmaTextTokenCollector extends TextTokenVisitor {
 	private final Deque<ClassEntry> classStack = new ArrayDeque<>();
 	private final Deque<MethodEntry> methodStack = new ArrayDeque<>();
 
-	private final Map<Token, Entry<?>> declarations = new HashMap<>();
-	private final Map<Token, Pair<Entry<?>, Entry<?>>> references = new HashMap<>();
-	private final Map<Token, Boolean> tokens = new LinkedHashMap<>();
+	/**
+	 * Tokens collected for each class file written during this decompile run, keyed by the class the file
+	 * declares at its top level.
+	 *
+	 * <p>Every file Vineflower writes is passed through a collector, but each file's token ranges are
+	 * relative to that file's own text. To prevent clashing with siblings, we isolate each file.
+	 */
+	private final Map<String, ContentTokens> tokensByClass = new LinkedHashMap<>();
+	private ContentTokens current = new ContentTokens();
+	private boolean currentIsKeyed;
 	private final Map<ClassEntry, TextRange> classRanges = new HashMap<>();
+	private final Map<ClassEntry, TypeDeclaration<?>> classDeclarations = new HashMap<>();
 	private final List<SyntheticMethodSpan> syntheticMethods = new ArrayList<>();
 	private final Deque<SyntheticMethodSpan> openSynthetic = new ArrayDeque<>();
 	private final Map<SyntheticMethodSpan, MethodEntry> syntheticEntryBySpan = new HashMap<>();
@@ -94,26 +102,35 @@ public class EnigmaTextTokenCollector extends TextTokenVisitor {
 	}
 
 	private void addDeclaration(Token token, Entry<?> entry) {
-		this.declarations.put(token, entry);
-		this.tokens.put(token, true);
+		this.current.declarations.put(token, entry);
+		this.current.tokens.put(token, true);
 	}
 
 	private void addReference(Token token, Entry<?> entry, Entry<?> context) {
-		this.references.put(token, Pair.of(entry, context));
-		this.tokens.put(token, false);
+		this.current.references.put(token, Pair.of(entry, context));
+		this.current.tokens.put(token, false);
 	}
 
-	public void addTokensToIndex(SourceIndex index, UnaryOperator<Token> tokenProcessor) {
-		for (Token token : this.tokens.keySet()) {
+	public boolean hasTokensFor(String className) {
+		return this.tokensByClass.containsKey(className);
+	}
+
+	public void addTokensToIndex(SourceIndex index, String className, UnaryOperator<Token> tokenProcessor) {
+		ContentTokens collected = this.tokensByClass.get(className);
+		if (collected == null) {
+			return;
+		}
+
+		for (Token token : collected.tokens.keySet()) {
 			Token newToken = tokenProcessor.apply(token);
 			if (newToken == null) {
 				continue;
 			}
 
-			if (this.tokens.get(token)) {
-				index.addDeclaration(newToken, this.declarations.get(token));
+			if (collected.tokens.get(token)) {
+				index.addDeclaration(newToken, collected.declarations.get(token));
 			} else {
-				Pair<Entry<?>, Entry<?>> ref = this.references.get(token);
+				Pair<Entry<?>, Entry<?>> ref = collected.references.get(token);
 				index.addReference(newToken, ref.a, ref.b);
 			}
 		}
@@ -155,27 +172,9 @@ public class EnigmaTextTokenCollector extends TextTokenVisitor {
 			this.addClassAndChildren(decl, pkgPrefix + decl.getNameAsString());
 		}
 
-		for (ClassEntry classEntry : this.classRanges.keySet()) {
-			String[] parts = classEntry.getContextualName().split("\\$");
-			TypeDeclaration<?> type = null;
-			for (TypeDeclaration<?> decl : unit.getTypes()) {
-				if (decl.getNameAsString().equals(parts[0])) {
-					type = decl;
-					break;
-				}
-			}
-
-			for (int i = 1; i < parts.length; i++) {
-				if (type != null) {
-					TypeDeclaration<?> finalType = type;
-					String name = parts[i];
-					type = type.findFirst(TypeDeclaration.class, t -> t != finalType && t.getNameAsString().equals(name)).orElse(null);
-				}
-			}
-
-			if (type == null) {
-				throw new IllegalStateException("Could not find type " + classEntry.getContextualName() + " in parsed source");
-			}
+		for (Map.Entry<ClassEntry, TypeDeclaration<?>> classDeclaration : this.classDeclarations.entrySet()) {
+			ClassEntry classEntry = classDeclaration.getKey();
+			TypeDeclaration<?> type = classDeclaration.getValue();
 
 			Map<String, LambdaNode> rootNodes = new HashMap<>();
 			Map<String, Integer> seenMethods = new HashMap<>();
@@ -350,7 +349,9 @@ public class EnigmaTextTokenCollector extends TextTokenVisitor {
 			return;
 		}
 
-		this.classRanges.put(getClassEntry(name), textRange);
+		ClassEntry entry = getClassEntry(name);
+		this.classRanges.put(entry, textRange);
+		this.classDeclarations.put(entry, decl);
 		decl.getMembers().forEach(member -> {
 			if (member instanceof TypeDeclaration<?> child) {
 				this.addClassAndChildren(child, name + "$" + child.getNameAsString());
@@ -425,7 +426,11 @@ public class EnigmaTextTokenCollector extends TextTokenVisitor {
 	public void start(String content) {
 		this.content = content;
 		this.lineIndexer = new LineIndexer(content);
+		this.current = new ContentTokens();
+		this.currentIsKeyed = false;
 		this.classRanges.clear();
+		this.classDeclarations.clear();
+		this.classStack.clear();
 		this.methodStack.clear();
 		this.openSynthetic.clear();
 		this.syntheticMethods.clear();
@@ -441,6 +446,12 @@ public class EnigmaTextTokenCollector extends TextTokenVisitor {
 		this.updateMethodStack(range);
 
 		if (declaration) {
+			if (!this.currentIsKeyed) {
+				// the first declaration in a file is its top-level class, which is what the file is written for
+				this.currentIsKeyed = true;
+				this.tokensByClass.put(name, this.current);
+			}
+
 			this.classStack.push(getClassEntry(name));
 			this.addDeclaration(token, getClassEntry(name));
 		} else {
@@ -511,6 +522,12 @@ public class EnigmaTextTokenCollector extends TextTokenVisitor {
 		} else {
 			this.addReference(token, getVariableEntry(parent, idx, name), this.methodStack.peek());
 		}
+	}
+
+	private static final class ContentTokens {
+		private final Map<Token, Entry<?>> declarations = new HashMap<>();
+		private final Map<Token, Pair<Entry<?>, Entry<?>>> references = new HashMap<>();
+		private final Map<Token, Boolean> tokens = new LinkedHashMap<>();
 	}
 
 	private record SyntheticMethodSpan(TextRange range, boolean isLambda) {}

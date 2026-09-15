@@ -143,7 +143,8 @@ public final class ClassHandleProvider {
 				e.invalidateJavadoc();
 			}
 
-			if (entry.isInnerClass()) {
+			// only a class written inside another class' source affects that class' text
+			if (entry.isInnerClass() && this.project.isNestedInSource(entry)) {
 				this.invalidateJavadoc(entry.getOuterClass());
 			}
 		});

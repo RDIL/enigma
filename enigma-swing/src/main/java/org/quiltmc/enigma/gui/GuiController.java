@@ -444,6 +444,10 @@ public class GuiController implements ClientPacketHandler {
 		this.openReference(reference);
 	}
 
+	public ClassEntry getSourceRoot(Entry<?> entry) {
+		return this.project.getSourceRoot(entry.getContainingClass());
+	}
+
 	public void refreshClasses() {
 		if (this.project == null) {
 			return;
@@ -461,7 +465,7 @@ public class GuiController implements ClientPacketHandler {
 
 		Collection<ClassEntry> classes = this.project.getJarIndex().getIndex(EntryIndex.class).getClasses();
 		Stream<ClassEntry> visibleClasses = classes.stream()
-				.filter(entry -> !entry.isInnerClass());
+				.filter(entry -> !this.project.isNestedInSource(entry));
 
 		visibleClasses.forEach(entry -> {
 			TranslateResult<ClassEntry> result = mapper.extendedDeobfuscate(entry);
@@ -594,27 +598,27 @@ public class GuiController implements ClientPacketHandler {
 
 				// local variable entries need to be propagated up the tree to update param names in javadoc
 				if (target instanceof LocalVariableEntry) {
-					this.chp.invalidateJavadoc(target.getTopLevelClass());
+					this.chp.invalidateJavadoc(this.getSourceRoot(target));
 
 					var children = this.project.getJarIndex().getIndex(InheritanceIndex.class).getChildren(target.getContainingClass());
 					for (ClassEntry child : children) {
-						this.chp.invalidateJavadoc(child.getTopLevelClass());
+						this.chp.invalidateJavadoc(this.getSourceRoot(child));
 					}
 				}
 			}
 
 			if (!Objects.equals(prev.javadoc(), mapping.javadoc())) {
-				this.chp.invalidateJavadoc(target.getTopLevelClass());
+				this.chp.invalidateJavadoc(this.getSourceRoot(target));
 			}
 
-			if (renamed && target instanceof ClassEntry classEntry && !classEntry.isInnerClass()) {
+			if (renamed && target instanceof ClassEntry classEntry && !this.project.isNestedInSource(classEntry)) {
 				boolean isOldOb = prev.targetName() == null;
 				boolean isNewOb = mapping.targetName() == null;
 				this.gui.moveClassTree(target.getContainingClass(), updateSwingState, isOldOb, isNewOb);
 			} else if (updateSwingState) {
 				// update stat icons for classes that could have had their mappings changed by this update
 				boolean propagate = target instanceof FieldEntry || target instanceof MethodEntry || target instanceof LocalVariableEntry;
-				this.gui.reloadStats(change.getTarget().getTopLevelClass(), propagate);
+				this.gui.reloadStats(this.getSourceRoot(change.getTarget()), propagate);
 			}
 		}
 	}

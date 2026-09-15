@@ -27,10 +27,11 @@ public class MainJarIndex extends IndependentJarIndex {
 		BridgeMethodIndex bridgeMethodIndex = new IndependentBridgeMethodIndex(entryIndex, inheritanceIndex, referenceIndex);
 		PackageVisibilityIndex packageVisibilityIndex = new PackageVisibilityIndex();
 		EnclosingMethodIndex enclosingMethodIndex = new EnclosingMethodIndex();
+		InnerClassIndex innerClassIndex = new InnerClassIndex();
 		LambdaIndex lambdaIndex = new LambdaIndex();
 		return new MainJarIndex(
 				entryIndex, inheritanceIndex, referenceIndex, bridgeMethodIndex,
-				packageVisibilityIndex, enclosingMethodIndex, lambdaIndex
+				packageVisibilityIndex, enclosingMethodIndex, innerClassIndex, lambdaIndex
 		);
 	}
 

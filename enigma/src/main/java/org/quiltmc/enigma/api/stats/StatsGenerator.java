@@ -128,7 +128,7 @@ public class StatsGenerator {
 				this.generationLatch = new CountDownLatch(1);
 
 				List<ClassEntry> classes = this.entryIndex.getClasses()
-						.stream().filter(entry -> !entry.isInnerClass()).toList();
+						.stream().filter(entry -> !this.project.isNestedInSource(entry)).toList();
 
 				int done = 0;
 				progress.init(classes.size() - 1, I18n.translate("progress.stats"));
@@ -162,7 +162,7 @@ public class StatsGenerator {
 
 	private void addChildrenRecursively(List<Entry<?>> entries, Entry<?> toCheck) {
 		if (toCheck instanceof ClassEntry innerClassEntry) {
-			List<ParentedEntry<?>> classChildren = this.project.getJarIndex().getChildrenByClass().get(innerClassEntry);
+			List<ParentedEntry<?>> classChildren = this.ownChildren(innerClassEntry);
 			if (!classChildren.isEmpty()) {
 				entries.addAll(classChildren);
 				for (Entry<?> entry : classChildren) {
@@ -172,6 +172,16 @@ public class StatsGenerator {
 				}
 			}
 		}
+	}
+
+	/**
+	 * Returns the members of {@code classEntry} and the classes written inside its source. A class that is
+	 * not nested in source has its own stats, so including it here would count its members twice.
+	 */
+	private List<ParentedEntry<?>> ownChildren(ClassEntry classEntry) {
+		return this.project.getJarIndex().getChildrenByClass().get(classEntry).stream()
+				.filter(child -> !(child instanceof ClassEntry childClass) || this.project.isNestedInSource(childClass))
+				.toList();
 	}
 
 	/**
@@ -192,7 +202,7 @@ public class StatsGenerator {
 		Map<StatType, Integer> mappableCounts = new EnumMap<>(StatType.class);
 		Map<StatType, Map<String, Integer>> unmappedCounts = new EnumMap<>(StatType.class);
 
-		List<ParentedEntry<?>> children = this.project.getJarIndex().getChildrenByClass().get(classEntry);
+		List<ParentedEntry<?>> children = this.ownChildren(classEntry);
 		List<Entry<?>> entries = new ArrayList<>(children);
 
 		for (Entry<?> entry : children) {
@@ -311,7 +321,8 @@ public class StatsGenerator {
 		if (this.project.isRenamable(entry)) {
 			if (this.project.isObfuscated(entry)
 					|| (!parameters.countFallback() && this.fallbackNameProposerIdCache.contains(this.project.getRemapper().getMapping(entry).sourcePluginId()))) { // fallback proposed mappings don't count
-				String parent = this.project.getRemapper().deobfuscate(entry.getTopLevelClass()).getName().replace('/', '.');
+				ClassEntry statsClass = this.project.getSourceRoot(entry.getContainingClass());
+				String parent = this.project.getRemapper().deobfuscate(statsClass).getFullName().replace('/', '.');
 
 				unmapped.computeIfAbsent(type, t -> new HashMap<>());
 				unmapped.get(type).put(parent, unmapped.get(type).getOrDefault(parent, 0) + 1);

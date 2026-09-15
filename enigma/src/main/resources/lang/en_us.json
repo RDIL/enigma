@@ -265,6 +265,7 @@
 	"progress.jar.indexing.process.entries": "Entries...",
 	"progress.jar.indexing.process.inheritance": "Inheritance...",
 	"progress.jar.indexing.process.enclosing_methods": "Enclosing methods...",
+	"progress.jar.indexing.process.inner_classes": "Inner classes...",
 	"progress.jar.indexing.process.package_visibility": "Package visibility...",
 	"progress.jar.indexing.process.lambdas": "Lambdas...",
 	"progress.jar.indexing.process.member_types": "Member types...",

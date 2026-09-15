@@ -17,4 +17,12 @@ public class AsmUtil {
 		r.accept(node, 0);
 		return node;
 	}
+
+	public static boolean isNestedInSource(ClassNode node) {
+		if (node.innerClasses == null) {
+			return false;
+		}
+
+		return node.innerClasses.stream().anyMatch(innerClass -> innerClass.name.equals(node.name));
+	}
 }

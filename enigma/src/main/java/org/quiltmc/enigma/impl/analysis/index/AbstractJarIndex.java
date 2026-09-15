@@ -229,6 +229,11 @@ public abstract class AbstractJarIndex implements JarIndex {
 	}
 
 	@Override
+	public void indexInnerClass(ClassDefEntry classEntry, InnerClassData innerClassData) {
+		this.indexers.forEach((key, indexer) -> indexer.indexInnerClass(classEntry, innerClassData));
+	}
+
+	@Override
 	public void indexEnclosingMethod(ClassDefEntry classEntry, EnclosingMethodData enclosingMethodData) {
 		this.indexers.forEach((key, indexer) -> indexer.indexEnclosingMethod(classEntry, enclosingMethodData));
 	}
